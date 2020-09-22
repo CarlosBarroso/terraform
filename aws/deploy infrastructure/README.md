@@ -1,6 +1,6 @@
-# script básico de terraform para desplegar infrastructura en aws
+# Terraform to deploy AWS infracture
 
-para conectarse a aws se usan las siguientes variables de entorno:
+To connect to AWS, use the next environment variables
 
 $env:AWS_ACCESS_KEY_ID="AKIA..."
 
