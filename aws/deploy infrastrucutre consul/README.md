@@ -1,0 +1,1 @@
+# Usando consul como respaldo de tfstate
