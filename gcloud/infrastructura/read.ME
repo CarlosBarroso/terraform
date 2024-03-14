@@ -1,0 +1,23 @@
+se usa el bucket creado en el directorio backend
+
+bucket: terraform-backend-cbc001
+
+se despliega:
+- vpc
+- gke
+
+-- jenkins en gke -- falta configuración seedjobs
+-- spinnaker -- pte 
+-- knative / cloud events / kafka -- pte
+-- prometheus -- pte
+-- grafana -- pte -- configuraciones de data sources
+
+-- ?? usar service balancer para exponer servicios
+-- ?? usar ingress
+
+pendiente de revisar
+- que gke sea privado
+- que gke use spot instances
+
+Notas: cuando he intentado actualizar el helm de jenkins me ha dicho que no se podía conectar al cluster
+solución: sacar el recurso del estado
