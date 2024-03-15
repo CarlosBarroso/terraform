@@ -5,13 +5,30 @@
 #https://github.com/terraform-google-modules/terraform-google-kubernetes-engine/blob/master/modules/auth/outputs.tf
 
 
+variable "gke_num_nodes" {
+  default     = 1
+  description = "number of gke nodes"
+}
+
+variable "gke_node_type" {
+  default     = "e2-standard-4" #"e2-standard-2"
+  description = "tipo de nodo"
+}
+
+variable "gke_name" {
+  default     = "cluster-gke"
+  description = "tipo de nodo"
+}
+
 module "gke_auth" {
-  source = "terraform-google-modules/kubernetes-engine/google//modules/auth"
+  source  = "terraform-google-modules/kubernetes-engine/google//modules/auth"
   version = "24.1.0"
-  depends_on   = [module.gke]
+  #source = "./modules/auth"
+
+  depends_on   = [google_container_cluster.primary]
   project_id   = var.project_id
-  location     = module.gke.location
-  cluster_name = module.gke.name
+  location     = google_container_cluster.primary.location
+  cluster_name = google_container_cluster.primary.name
 }
 
 resource "local_file" "kubeconfig" {
@@ -19,107 +36,52 @@ resource "local_file" "kubeconfig" {
   filename = "kubeconfig-${var.env_name}"
 }
 
-module "gke" {
-  source                     = "terraform-google-modules/kubernetes-engine/google//modules/private-cluster"
-  project_id                 = var.project_id
-  name                       = "${var.cluster_name}-${var.env_name}"
-  region                     = var.region
-  #zones                      = ["us-central1-a", "us-central1-b", "us-central1-f"]
-  network                    = module.gcp-network.network_name
-  subnetwork                 = module.gcp-network.subnets_names[0]
-  ip_range_pods              = var.ip_range_pods_name
-  ip_range_services          = var.ip_range_services_name
-  http_load_balancing        = false
-  network_policy             = false
-  horizontal_pod_autoscaling = true
-  filestore_csi_driver       = false
-  enable_private_endpoint    = true
-  enable_private_nodes       = true
-  #master_ipv4_cidr_block     = "10.0.0.0/28"
+# GKE cluster
+data "google_container_engine_versions" "gke_version" {
+  location       = var.region
+  version_prefix = "1.27."
+}
 
-  node_pools = [
-    {
-      name                      = "default-node-pool"
-      machine_type              = "e2-standard-2"#"e2-medium"
-      node_locations            = "europe-west1-b,europe-west1-c,europe-west1-d"
-      min_count                 = 1
-      max_count                 = 2
-      local_ssd_count           = 0
-      spot                      = false
-      disk_size_gb              = 30
-      disk_type                 = "pd-standard"
-      image_type                = "COS_CONTAINERD"
-      enable_gcfs               = false
-      enable_gvnic              = false
-      logging_variant           = "DEFAULT"
-      auto_repair               = true
-      auto_upgrade              = true
-      #service_account           = "project-service-account@<PROJECT ID>.iam.gserviceaccount.com"
-      preemptible               = false
-      initial_node_count        = 80
-    },
-  ]
+resource "google_container_cluster" "primary" {
+  name     = var.gke_name
+  location = var.region
 
-  node_pools_oauth_scopes = {
-    all = [
+  # We can't create a cluster with no node pool defined, but we want to only use
+  # separately managed node pools. So we create the smallest possible default
+  # node pool and immediately delete it.
+  remove_default_node_pool = true
+  initial_node_count       = 1
+
+  network    = module.gcp-network.network_name
+  subnetwork = module.gcp-network.subnets_names[0]
+}
+
+# Separately Managed Node Pool
+resource "google_container_node_pool" "primary_nodes" {
+  name     = google_container_cluster.primary.name
+  location = var.region
+  cluster  = google_container_cluster.primary.name
+
+  version    = data.google_container_engine_versions.gke_version.release_channel_latest_version["STABLE"]
+  node_count = var.gke_num_nodes
+
+  node_config {
+    oauth_scopes = [
       "https://www.googleapis.com/auth/logging.write",
       "https://www.googleapis.com/auth/monitoring",
     ]
-  }
 
-  node_pools_labels = {
-    all = {}
-    default-node-pool = {
-      default-node-pool = true
+    labels = {
+      env = var.project_id
     }
-  }
 
-  node_pools_metadata = {
-    all = {}
-    default-node-pool = {
-      node-pool-metadata-custom-value = "my-node-pool"
+    preemptible  = true
+    machine_type = var.gke_node_type
+    tags         = ["gke-node", "${var.project_id}-gke"]
+    disk_size_gb = 50
+    metadata = {
+      disable-legacy-endpoints = "true"
     }
-  }
-
-  node_pools_taints = {
-    all = []
-    default-node-pool = [
-      {
-        key    = "default-node-pool"
-        value  = true
-        effect = "PREFER_NO_SCHEDULE"
-      },
-    ]
-  }
-
-  node_pools_tags = {
-    all = []
-    default-node-pool = [
-      "default-node-pool",
-    ]
   }
 }
 
-#module "gke" {
-#  source                 = "terraform-google-modules/kubernetes-engine/google//modules/private-cluster"
-#  version                = "24.1.0"
-#  project_id             = var.project_id
-#  name                   = "${var.cluster_name}-${var.env_name}"
-#  regional               = true
-#  region                 = var.region
-#  network                = module.gcp-network.network_name
-#  subnetwork             = module.gcp-network.subnets_names[0]
-#  ip_range_pods          = var.ip_range_pods_name
-#  ip_range_services      = var.ip_range_services_name
-#  
-#  node_pools = [
-#    {
-#      name                      = "node-pool"
-#      machine_type              = "e2-standard-2"
-#      node_locations            = "europe-west1-b,europe-west1-c,europe-west1-d"
-#      min_count                 = 1
-#      max_count                 = 2
-#      disk_size_gb              = 30
-#    },
-#  ]
-#}
