@@ -3,15 +3,9 @@ variable "namespace_monitoring" {
   default = "monitoring"
 }
 
-resource "kubernetes_namespace" "monitoring" {
-  metadata {
-    name = var.namespace_monitoring
-  }
-}
-
-resource "random_password" "grafana" {
-  length = 24
-}
+#resource "random_password" "grafana" {
+#  length = 24
+#}
 
 #resource "helm_release" "prometheus" {
 #  chart      = "prometheus"

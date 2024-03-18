@@ -6,6 +6,12 @@ se despliega:
 - vpc
 - gke
 
+el helm de terraform falla al desplegar jenkins porque usa recursos "locales", 
+es decir, que hace referencia a directorios locales
+una propuesta de despliegue es desplegar argocd y desde argocd desplegar yaml
+configurar jenkins, spinnaker, prometheus, grafana y knative / cloudEventes / kafka
+
+
 -- jenkins en gke -- falta configuración seedjobs
 -- spinnaker -- pte 
 -- knative / cloud events / kafka -- pte
