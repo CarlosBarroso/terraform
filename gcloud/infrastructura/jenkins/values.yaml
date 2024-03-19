@@ -9,7 +9,6 @@ controller:
     - google-source-plugin:latest
     - google-kubernetes-engine:latest
     - google-storage-plugin:latest
-    - blueocean:latest
   resources:
     requests:
       cpu: "50m"
